@@ -58,7 +58,7 @@ These are documented here because they're the kind of bug that's easy to lose an
 - [x] Bootable ISO (GRUB + xorriso)
 - [ ] Real hardware boot test
 - [ ] Networking + Tor-forcing firewall
-- [ ] runit as PID 1 (currently BusyBox's built-in init)
+- [ ] run it as PID 1 (currently BusyBox's built-in init)
 - [ ] Hardening pass (sysctl, module restrictions, setuid audit)
 
 ## Build environment
