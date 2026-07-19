@@ -7,13 +7,13 @@
 
 **linux** · **operating-system** · **kernel** · **musl** · **busybox** · **squashfs** · **overlayfs** · **privacy** · **from-scratch** · **osdev** · **live-boot**
 
-A minimal, privacy-focused Linux distribution built from scratch — custom musl cross-toolchain, self-configured kernel, static BusyBox userspace, and a live-boot architecture with a read-only squashfs root and a RAM-only overlay (nothing persists across reboots by design).
+A minimal, privacy-focused Linux distribution built from scratch custom musl cross-toolchain, self-configured kernel, static BusyBox userspace, and a live-boot architecture with a read-only squashfs root and a RAM-only overlay (nothing persists across reboots by design).
 
-This is a from-scratch build in the LFS (Linux From Scratch) tradition: no distro packages, no prebuilt kernel, no prebuilt userspace. Every binary in the boot chain — toolchain, kernel, init, shell — was compiled from source for this project.
+This is a from scratch build in LFS (Linux From Scratch) tradition: no distro packages, no prebuilt kernel, no prebuilt userspace. Every binary in the boot chain toolchain, kernel, init, shell was compiled from source for this project.
 
 ## Why
 
-Most "build your own Linux" projects stop at booting a kernel. Raven's goal is a distributable ISO people can put on a USB stick and boot on real hardware, with an actual design point: a minimal, hardened, amnesiac system in the spirit of Tails/OpenBSD, not just a proof that Linux can boot.
+Most "build your own Linux" projects stop at booting a kernel. Raven's goal is a distributable ISO people can put on a USB stick and boot on real hardware, with an actual design point: a minimal, hardened, and schizo private amnesiac system in the spirit of Tails/OpenBSD, not just a proof that Linux can boot.
 
 ## Architecture
 Custom musl cross-toolchain (x86_64-linux-musl-*)
@@ -29,7 +29,7 @@ ash shell, coreutils, init utilities in one binary
 |
 v
 raven.squashfs
-Compressed, read-only root filesystem -- the OS payload
+Compressed, read-only root filesystem the OS payload
 |
 v
 Tiny bootstrap initramfs
@@ -43,10 +43,10 @@ Building a musl cross-toolchain with a bleeding-edge GCC (16.1.0) surfaced a han
 
 - **GCC 16 defaults to `-std=c23`**, which reserves `bool`/`true`/`false` as keywords — the Linux 6.6 headers (written pre-C23) collide with this. Fixed by forcing `-std=gnu11` at the compiler level.
 - **The custom-built binutils 2.44 shipped a broken `nm`** — segfaulted on the kernel's realmode object files. Worked around by wrapping the cross-nm to call the host system's nm instead (symbol table reading doesn't need cross-compiled tooling).
-- **Same binutils build's `ar` also crashed** (SIGSEGV while archiving arch/x86/lib). Same fix pattern — wrapped to call host ar.
+- **Same binutils build's `ar` also crashed** (SIGSEGV while archiving arch/x86/lib). Same fix pattern wrapped to call host ar.
 - **GCC's `--enable-default-pie` broke the kernel's 16-bit real-mode trampoline code**, which cannot be position-independent. Fixed by forcing `-fno-pie`/`-no-pie` through a compiler/linker wrapper.
 
-These are documented here because they're the kind of bug that's easy to lose an afternoon to and hard to find written up anywhere — hopefully useful to the next person who tries a GCC 16 + musl-cross-make + Linux 6.x combination.
+These are documented here because they're the kind of bug that's easy to lose an afternoon to and hard to find written up anywhere hopefully useful to the next person who tries a GCC 16 + musl-cross-make + Linux 6.x combination.
 
 ## Status
 
@@ -60,12 +60,14 @@ These are documented here because they're the kind of bug that's easy to lose an
 - [x] Basic networking (DHCP via udhcpc)
 - [ ] Tor-forcing firewall
 - [ ] runit as PID 1 (currently BusyBox's built-in init)
+- [ ] Networking + Tor-forcing firewall
+- [ ] run it as PID 1 (currently BusyBox's built-in init)
 - [ ] Hardening pass (sysctl, module restrictions, setuid audit)
 
 ## Build environment
 
 - Host: Arch Linux (VM)
-- Kernel: Linux 6.6 (LTS)
+- Kernel: Linux 6.6 (LFS)
 - Toolchain: musl-cross-make, GCC 16.1.0, binutils 2.44
 - Userspace: BusyBox 1.36.1 (static)
 
