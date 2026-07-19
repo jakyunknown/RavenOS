@@ -64,7 +64,7 @@ These are documented here because they're the kind of bug that's easy to lose an
 ## Build environment
 
 - Host: Arch Linux (VM)
-- Kernel: Linux 6.6 (LTS)
+- Kernel: Linux 6.6 (LFS)
 - Toolchain: musl-cross-make, GCC 16.1.0, binutils 2.44
 - Userspace: BusyBox 1.36.1 (static)
 
