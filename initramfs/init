@@ -3,15 +3,20 @@ mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
 
-mkdir -p /mnt/root /mnt/overlay/upper /mnt/overlay/work /mnt/newroot
+mkdir -p /mnt/root /mnt/overlay /mnt/newroot
 
-# Mount the squashfs read-only (adjust device as needed once we test)
-mount -t squashfs /dev/vda /mnt/root 2>/dev/null || \
-mount -t squashfs /dev/vda /mnt/root 2>/dev/null
+for dev in /dev/sr0 /dev/sda /dev/sdb /dev/vda; do
+    mount -t squashfs $dev /mnt/root 2>/dev/null && break
+    mount -t iso9660 $dev /mnt/root 2>/dev/null && break
+done
 
-# RAM-backed writable layer
+if [ ! -e /mnt/root/init ] && [ -f /mnt/root/boot/raven.squashfs ]; then
+    mkdir -p /mnt/isoroot
+    mount --move /mnt/root /mnt/isoroot
+    mount -t squashfs -o loop /mnt/isoroot/boot/raven.squashfs /mnt/root
+fi
+
 mount -t tmpfs tmpfs /mnt/overlay
-
 mkdir -p /mnt/overlay/upper /mnt/overlay/work
 
 mount -t overlay overlay \
