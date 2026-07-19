@@ -1,0 +1,10 @@
+*.squashfs
+*.cpio.gz
+*.iso
+bzImage
+vmlinuz
+_install/
+rootfs/
+sources/
+*.o
+*.a
