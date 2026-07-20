@@ -1,0 +1,2 @@
+# Raven OS package index
+# format: <name> <url> <sha256>

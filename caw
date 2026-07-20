@@ -1,0 +1,90 @@
+#!/bin/sh
+# caw — Raven OS package manager (MVP)
+
+INDEX_URL="https://raw.githubusercontent.com/jakyunknown/RavenOS/main/packages/index.txt"
+INDEX_FILE="/etc/caw/index.txt"
+INSTALLED_DIR="/etc/caw/installed"
+BIN_DIR="/usr/local/bin"
+
+mkdir -p /etc/caw "$INSTALLED_DIR" "$BIN_DIR"
+
+cmd_update() {
+    echo "Updating package index..."
+    wget -q -O "$INDEX_FILE" "$INDEX_URL"
+    if [ $? -ne 0 ]; then
+        echo "Failed to fetch index. Check network connection."
+        exit 1
+    fi
+    echo "Index updated. $(wc -l < "$INDEX_FILE") package(s) available."
+}
+
+cmd_install() {
+    PKG="$1"
+    if [ -z "$PKG" ]; then
+        echo "Usage: caw install <package>"
+        exit 1
+    fi
+    if [ ! -f "$INDEX_FILE" ]; then
+        echo "No package index found. Run 'caw update' first."
+        exit 1
+    fi
+
+    LINE=$(grep "^${PKG} " "$INDEX_FILE")
+    if [ -z "$LINE" ]; then
+        echo "Package '$PKG' not found in index."
+        exit 1
+    fi
+
+    URL=$(echo "$LINE" | awk '{print $2}')
+    echo "Installing $PKG from $URL ..."
+
+    TMPTAR="/tmp/${PKG}.tar.gz"
+    wget -q -O "$TMPTAR" "$URL"
+    if [ $? -ne 0 ]; then
+        echo "Download failed."
+        exit 1
+    fi
+
+    tar -xzf "$TMPTAR" -C "$BIN_DIR"
+    rm -f "$TMPTAR"
+
+    echo "$LINE" > "$INSTALLED_DIR/$PKG"
+    echo "$PKG installed."
+}
+
+cmd_remove() {
+    PKG="$1"
+    if [ ! -f "$INSTALLED_DIR/$PKG" ]; then
+        echo "Package '$PKG' is not installed."
+        exit 1
+    fi
+    rm -f "$BIN_DIR/$PKG"
+    rm -f "$INSTALLED_DIR/$PKG"
+    echo "$PKG removed."
+}
+
+cmd_list() {
+    if [ -z "$(ls -A "$INSTALLED_DIR" 2>/dev/null)" ]; then
+        echo "No packages installed."
+        return
+    fi
+    echo "Installed packages:"
+    ls "$INSTALLED_DIR" | while read -r p; do
+        echo "  $p"
+    done
+}
+
+case "$1" in
+    update)  cmd_update ;;
+    install) cmd_install "$2" ;;
+    remove)  cmd_remove "$2" ;;
+    list)    cmd_list ;;
+    *)
+        echo "Raven OS package manager (caw)"
+        echo "Usage:"
+        echo "  caw update            - refresh package index"
+        echo "  caw install <name>    - install a package"
+        echo "  caw remove <name>     - remove a package"
+        echo "  caw list              - list installed packages"
+        ;;
+esac
