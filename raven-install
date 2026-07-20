@@ -1,0 +1,180 @@
+#!/bin/sh
+# raven-install — interactive installer for Raven OS
+set -e
+
+echo "=============================="
+echo "   Raven OS Installer"
+echo "=============================="
+echo
+
+if [ "$(id -u)" != "0" ]; then
+    echo "This installer must be run as root."
+    exit 1
+fi
+
+if [ ! -f /boot/raven.squashfs ] && [ ! -f /mnt/isoroot/boot/raven.squashfs ]; then
+    echo "Cannot find raven.squashfs. Are you booted from the Raven live media?"
+    exit 1
+fi
+
+SQUASHFS_SRC="/boot/raven.squashfs"
+[ -f /mnt/isoroot/boot/raven.squashfs ] && SQUASHFS_SRC="/mnt/isoroot/boot/raven.squashfs"
+
+KERNEL_SRC="/boot/vmlinuz"
+[ -f /mnt/isoroot/boot/vmlinuz ] && KERNEL_SRC="/mnt/isoroot/boot/vmlinuz"
+
+echo "Available disks:"
+echo
+grep -E ' [sv]d[a-z]$| nvme[0-9]n[0-9]$' /proc/partitions | awk '{print "  /dev/"$4}'
+echo
+printf "Enter the target disk (e.g. /dev/sda): "
+read TARGET_DISK
+
+if [ ! -b "$TARGET_DISK" ]; then
+    echo "Error: $TARGET_DISK is not a valid block device."
+    exit 1
+fi
+
+echo
+echo "WARNING: This will ERASE ALL DATA on $TARGET_DISK."
+printf "Type YES (all caps) to continue: "
+read CONFIRM
+if [ "$CONFIRM" != "YES" ]; then
+    echo "Aborted."
+    exit 1
+fi
+
+MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+MEM_MB=$((MEM_KB / 1024))
+DEFAULT_SWAP_MB=$MEM_MB
+printf "Swap size in MB [default: %sMB, matching RAM]: " "$DEFAULT_SWAP_MB"
+read SWAP_MB
+[ -z "$SWAP_MB" ] && SWAP_MB=$DEFAULT_SWAP_MB
+
+BOOT_MB=512
+
+echo
+echo "Partitioning $TARGET_DISK ..."
+
+case "$TARGET_DISK" in
+    *nvme*) PART_PREFIX="${TARGET_DISK}p" ;;
+    *)      PART_PREFIX="$TARGET_DISK" ;;
+esac
+
+BOOT_PART="${PART_PREFIX}1"
+SWAP_PART="${PART_PREFIX}2"
+PERSIST_PART="${PART_PREFIX}3"
+
+fdisk "$TARGET_DISK" << FDISK_EOF
+n
+p
+1
+
++${BOOT_MB}M
+n
+p
+2
+
++${SWAP_MB}M
+n
+p
+3
+
+
+t
+2
+82
+a
+1
+w
+FDISK_EOF
+
+echo "Partitions created:"
+echo "  Boot:       $BOOT_PART"
+echo "  Swap:       $SWAP_PART"
+echo "  Persistent: $PERSIST_PART"
+
+echo
+echo "Formatting partitions ..."
+mke2fs -F -j -L raven-boot "$BOOT_PART"
+mkswap -L raven-swap "$SWAP_PART"
+mke2fs -F -j -L raven-persist "$PERSIST_PART"
+
+echo
+echo "Installing OS files ..."
+mkdir -p /mnt/target-boot /mnt/target-persist
+mount "$BOOT_PART" /mnt/target-boot
+mount "$PERSIST_PART" /mnt/target-persist
+
+mkdir -p /mnt/target-boot/boot/grub
+cp "$SQUASHFS_SRC" /mnt/target-boot/boot/raven.squashfs
+cp "$KERNEL_SRC" /mnt/target-boot/boot/vmlinuz
+
+if [ -f /boot/initrd.gz ]; then
+    cp /boot/initrd.gz /mnt/target-boot/boot/initrd.gz
+elif [ -f /mnt/isoroot/boot/initrd.gz ]; then
+    cp /mnt/isoroot/boot/initrd.gz /mnt/target-boot/boot/initrd.gz
+fi
+
+echo
+echo "Installing GRUB bootloader ..."
+grub-install --boot-directory=/mnt/target-boot/boot --target=i386-pc "$TARGET_DISK"
+
+cat > /mnt/target-boot/boot/grub/grub.cfg << GRUB_EOF
+set timeout=5
+set default=0
+
+menuentry "Raven OS" {
+    linux /boot/vmlinuz console=tty0 root=persist
+    initrd /boot/initrd.gz
+}
+GRUB_EOF
+
+echo
+echo "--- System configuration ---"
+printf "Hostname [raven]: "
+read HOSTNAME
+[ -z "$HOSTNAME" ] && HOSTNAME="raven"
+
+printf "Root password: "
+stty -echo
+read ROOT_PASS
+stty echo
+echo
+printf "Confirm root password: "
+stty -echo
+read ROOT_PASS_CONFIRM
+stty echo
+echo
+
+if [ "$ROOT_PASS" != "$ROOT_PASS_CONFIRM" ]; then
+    echo "Passwords do not match. Aborting."
+    exit 1
+fi
+
+echo
+echo "Writing persistent configuration ..."
+mkdir -p /mnt/target-persist/etc
+echo "$HOSTNAME" > /mnt/target-persist/etc/hostname
+
+HASHED_PASS=$(mkpasswd -m sha512 "$ROOT_PASS" 2>/dev/null || echo "$ROOT_PASS")
+cat > /mnt/target-persist/etc/passwd << PASSWD_EOF
+root:x:0:0:root:/root:/bin/ash
+PASSWD_EOF
+
+cat > /mnt/target-persist/etc/shadow << SHADOW_EOF
+root:${HASHED_PASS}:19000:0:99999:7:::
+SHADOW_EOF
+chmod 600 /mnt/target-persist/etc/shadow
+
+echo
+echo "=============================="
+echo "  Installation complete!"
+echo "=============================="
+echo "  Boot partition:       $BOOT_PART"
+echo "  Swap partition:       $SWAP_PART"
+echo "  Persistent partition: $PERSIST_PART"
+echo
+echo "Remove the installation media and reboot."
+
+umount /mnt/target-boot /mnt/target-persist

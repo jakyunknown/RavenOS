@@ -10,10 +10,12 @@ for dev in /dev/sr0 /dev/sda /dev/sdb /dev/vda; do
     mount -t iso9660 $dev /mnt/root 2>/dev/null && break
 done
 
+ISO_MOVED=0
 if [ ! -e /mnt/root/init ] && [ -f /mnt/root/boot/raven.squashfs ]; then
     mkdir -p /mnt/isoroot
     mount --move /mnt/root /mnt/isoroot
     mount -t squashfs -o loop /mnt/isoroot/boot/raven.squashfs /mnt/root
+    ISO_MOVED=1
 fi
 
 mount -t tmpfs tmpfs /mnt/overlay
@@ -22,5 +24,10 @@ mkdir -p /mnt/overlay/upper /mnt/overlay/work
 mount -t overlay overlay \
   -o lowerdir=/mnt/root,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work \
   /mnt/newroot
+
+if [ "$ISO_MOVED" = "1" ]; then
+    mkdir -p /mnt/newroot/mnt/isoroot
+    mount --move /mnt/isoroot /mnt/newroot/mnt/isoroot
+fi
 
 exec switch_root /mnt/newroot /sbin/init
