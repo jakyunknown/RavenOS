@@ -1,2 +1,4 @@
 # Raven OS package index
 # format: <name> <url> <sha256>
+fastfetch https://github.com/jakyunknown/RavenOS/releases/download/package-v1/fastfetch.tar.gz unverified
+fastfetch https://github.com/jakyunknown/RavenOS/releases/download/package-v1/fastfetch.tar.gz unverified
