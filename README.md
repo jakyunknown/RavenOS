@@ -56,12 +56,16 @@ These are documented here because they're the kind of bug that's easy to lose an
 - [x] Boots to an interactive shell (QEMU)
 - [x] squashfs + overlayfs live-boot architecture
 - [x] Bootable ISO (GRUB + xorriso)
-- [ ] Real hardware boot test
 - [x] Basic networking (DHCP via udhcpc)
+- [x] raven-install: interactive installer (partition/format/copy tested working; GRUB-in-Raven still pending)
+- [x] caw: custom package manager with real hosted packages (musl cross-compiled)
+- [x] First real package: fastfetch, cross-compiled for musl, Raven-branded logo
+- [ ] Real hardware boot test
+- [ ] Persistent /etc across reboots (persistent partition + init script bind-mount)
+- [ ] GRUB cross-compiled for musl (needed for raven-install to fully work)
 - [ ] Tor-forcing firewall
 - [ ] runit as PID 1 (currently BusyBox's built-in init)
-- [ ] Networking + Tor-forcing firewall
-- [ ] run it as PID 1 (currently BusyBox's built-in init)
+- [ ] Desktop environment
 - [ ] Hardening pass (sysctl, module restrictions, setuid audit)
 
 ## Build environment
