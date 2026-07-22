@@ -25,6 +25,25 @@ mount -t overlay overlay \
   -o lowerdir=/mnt/root,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work \
   /mnt/newroot
 
+# --- Persistent config: find and apply the raven-persist partition ---
+# Wait briefly for block devices to settle before looking for persistent partition
+i=0
+while [ $i -lt 5 ]; do
+    PERSIST_DEV=$(findfs LABEL=raven-persist 2>/dev/null)
+    [ -n "$PERSIST_DEV" ] && break
+    sleep 1
+    i=$((i + 1))
+done
+if [ -n "$PERSIST_DEV" ]; then
+    mkdir -p /mnt/persist
+    if mount "$PERSIST_DEV" /mnt/persist 2>/dev/null; then
+        if [ -d /mnt/persist/etc ]; then
+            cp -a /mnt/persist/etc/. /mnt/newroot/etc/
+        fi
+        umount /mnt/persist
+    fi
+fi
+
 if [ "$ISO_MOVED" = "1" ]; then
     mkdir -p /mnt/newroot/mnt/isoroot
     mount --move /mnt/isoroot /mnt/newroot/mnt/isoroot
